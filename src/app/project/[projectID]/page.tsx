@@ -19,5 +19,5 @@ export default async function Page({
 		return notFound()
 	}
 
-	return <ProjectDetail projectID={projectID} />
+	return <ProjectDetail project={data.project as never} projectID={projectID} />
 }

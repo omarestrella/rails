@@ -2,8 +2,9 @@ import {
 	ServiceCreateInput,
 	ServiceDataFragment,
 	DeploymentStatus,
+	GetServicesQuery,
 } from "@/__generated__/graphql"
-import { gql, useMutation } from "@apollo/client"
+import { gql, useMutation, useQuery } from "@apollo/client"
 import { useCallback } from "react"
 
 export const ServiceFragment = gql`
@@ -33,6 +34,11 @@ export const ServiceFragment = gql`
 				node {
 					id
 					environmentId
+					latestDeployment {
+						id
+						status
+						createdAt
+					}
 				}
 			}
 		}
@@ -60,6 +66,22 @@ export const GetService = gql`
 	query GetService($serviceID: String!) {
 		service(id: $serviceID) {
 			...ServiceData
+		}
+	}
+`
+
+export const GetServices = gql`
+	${ServiceFragment}
+
+	query GetServices($projectID: String!) {
+		project(id: $projectID) {
+			services {
+				edges {
+					node {
+						...ServiceData
+					}
+				}
+			}
 		}
 	}
 `
@@ -113,17 +135,48 @@ export function useDeleteService(serviceID: string) {
 	}, [serviceID, deleteService])
 }
 
-export function useDeployService(serviceID: string, environmentID: string) {
+export function useDeployService(
+	serviceID: string,
+	environmentID: string | undefined,
+) {
 	const [deployService] = useMutation(DeployService)
 
-	return useCallback(() => {
-		deployService({
+	return useCallback(async () => {
+		if (!environmentID) {
+			console.warn("Cannot deploy without an environment ID")
+			return
+		}
+
+		await deployService({
 			variables: {
 				serviceID,
 				environmentID,
 			},
 		})
 	}, [serviceID, environmentID, deployService])
+}
+
+export function useServices(projectID: string) {
+	const { data, refetch } = useQuery<GetServicesQuery>(GetServices, {
+		variables: { projectID },
+	})
+
+	const services = (data?.project?.services?.edges?.map((edge) => edge.node) ??
+		[]) as Service[]
+
+	return { services, refetch }
+}
+
+export function getLatestDeployment(
+	service: Service | undefined,
+	environmentID: string | undefined,
+) {
+	if (!environmentID) {
+		return undefined
+	}
+	return service?.serviceInstances?.edges?.find(
+		(service) => service.node.environmentId === environmentID,
+	)?.node.latestDeployment
 }
 
 export type Service = ServiceDataFragment

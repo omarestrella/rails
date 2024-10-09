@@ -1,9 +1,16 @@
 /* eslint-disable @next/next/no-img-element */
 import type { Metadata } from "next"
 import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
 import { client, gql } from "@/api/client"
 import { cookies } from "next/headers"
+import { TooltipProvider } from "@radix-ui/react-tooltip"
+import Link from "next/link"
+
+import { Inter } from "next/font/google"
+
+const inter = Inter({
+	subsets: ["latin"],
+})
 
 export const metadata: Metadata = {
 	title: "Deployer",
@@ -32,29 +39,26 @@ export default async function RootLayout({
 
 	return (
 		<html lang="en" suppressHydrationWarning>
-			<body className={`antialiased`}>
-				<ThemeProvider
-					attribute="class"
-					defaultTheme="system"
-					enableSystem
-					disableTransitionOnChange
-				>
+			<body className={`antialiased ${inter.className}`}>
+				<TooltipProvider>
 					{hasSession ? (
-						<div className="w-screen h-12 border-b">
-							<div className="container mx-auto flex items-center justify-between h-full">
-								<div className="text-lg font-bold">Deployer</div>
+						<div className="h-12 w-screen border-b">
+							<div className="mx-auto flex h-full w-3/5 items-center justify-between">
+								<div className="text-lg font-bold">
+									<Link href="/">Deployer</Link>
+								</div>
 								<div>
 									<img
 										src={data.me.avatar}
-										className="w-8 h-8 rounded-full"
+										className="h-8 w-8 rounded-full"
 										alt="user"
 									/>
 								</div>
 							</div>
 						</div>
 					) : null}
-					<div className="container mx-auto py-4">{children}</div>
-				</ThemeProvider>
+					<div className="mx-auto w-3/5 py-4">{children}</div>
+				</TooltipProvider>
 			</body>
 		</html>
 	)

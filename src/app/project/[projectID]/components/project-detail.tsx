@@ -1,122 +1,18 @@
 "use client"
 
 import { publicClient } from "@/api/client"
-import { useProject } from "@/api/projects"
-import {
-	DeploymentStatus,
-	GetService,
-	Service,
-	useDeleteService,
-	useDeployService,
-} from "@/api/services"
-import { AddServiceButton } from "@/app/project/[projectID]/components/add-service"
-import { Status, StatusDot } from "@/components/status-dot"
-import { Button } from "@/components/ui/button"
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card"
-import { ApolloProvider, useLazyQuery } from "@apollo/client"
-import { useCallback, useMemo, useState } from "react"
+import { Project, useProject } from "@/api/projects"
+import { Service } from "@/api/services"
+import { ServiceEntry } from "@/app/project/[projectID]/components/service-entry"
+import { ApolloProvider } from "@apollo/client"
+import { useCallback } from "react"
 
 type ProjectDetailProps = {
 	projectID: string
+	project: Project
 }
 
-function ServiceCard({
-	service,
-	onDelete,
-}: {
-	service: Service
-	onDelete: (serviceID: string) => void
-}) {
-	const [deployment] = service.deployments.edges ?? []
-	const environmentID = service.serviceInstances.edges[0]?.node.environmentId
-
-	const deleteService = useDeleteService(service.id)
-	const deployService = useDeployService(service.id, environmentID)
-
-	const [loadService, { refetch }] = useLazyQuery<Service>(GetService, {
-		variables: {
-			serviceID: service.id,
-		},
-	})
-
-	const [deploying, setDeploying] = useState(false)
-
-	const handleDeploy = async () => {
-		if (deploying) return
-
-		setDeploying(deploying)
-		deployService()
-		await loadService()
-
-		setInterval(() => {
-			refetch()
-		}, 3000)
-	}
-
-	const statusClass: Status = useMemo(() => {
-		if (!deployment) {
-			return "neutral"
-		}
-
-		switch (deployment.node.status) {
-			case DeploymentStatus.NeedsApproval:
-			case DeploymentStatus.Queued:
-				return "warning"
-			case DeploymentStatus.Initializing:
-			case DeploymentStatus.Building:
-			case DeploymentStatus.Deploying:
-				return "busy"
-			case DeploymentStatus.Crashed:
-			case DeploymentStatus.Failed:
-				return "error"
-			case DeploymentStatus.Success:
-				return "success"
-			default:
-				return "neutral"
-		}
-	}, [deployment])
-
-	return (
-		<Card className="w-72" key={service.id}>
-			<CardHeader>
-				<CardTitle className="flex gap-2.5 items-center">
-					<StatusDot
-						status={statusClass}
-						animate={statusClass !== "error" && statusClass !== "success"}
-					/>
-					<span className="pb-0.5">{service.name}</span>
-				</CardTitle>
-				<CardDescription>
-					{deployment ? deployment.node.status : "No deployments"}
-				</CardDescription>
-			</CardHeader>
-
-			<CardContent className="flex gap-2">
-				<Button size="sm" onClick={handleDeploy} disabled={deploying}>
-					Deploy
-				</Button>
-				<Button
-					variant="destructive"
-					size="sm"
-					onClick={() => {
-						deleteService()
-						onDelete(service.id)
-					}}
-				>
-					Delete
-				</Button>
-			</CardContent>
-		</Card>
-	)
-}
-
-function InternalProjectDetail({ projectID }: ProjectDetailProps) {
+function InternalProjectDetail({ project, projectID }: ProjectDetailProps) {
 	const { data, loading, refetch } = useProject(projectID)
 
 	const refetchUntilDeleted = useCallback(
@@ -133,31 +29,28 @@ function InternalProjectDetail({ projectID }: ProjectDetailProps) {
 		[refetch],
 	)
 
-	if (loading) {
-		return null
-	}
+	// No SSR inside here, but we can try to rely on what gets sent from the page server component
+	// Helps with the flash of no services
+	const services = loading
+		? (project.services.edges ?? [])
+		: (data?.project.services.edges ?? [])
 
-	const services = data?.project.services.edges ?? []
-	const hasServices = services.length ?? 0 > 0
-
-	if (!hasServices) {
-		return (
-			<div>
-				<AddServiceButton projectID={projectID} onAdd={refetch} />
-			</div>
-		)
-	}
+	const environmentID =
+		project.baseEnvironment?.id ??
+		project.environments.edges?.find((edge) => edge.node.name === "production")
+			?.node.id
 
 	return (
-		<div className="w-screen">
-			<div className="flex flex-wrap">
+		<div className="w-full">
+			<div className="flex flex-col overflow-hidden">
 				{services.map((service) => {
 					const node = service.node as Service
 					return (
-						<ServiceCard
+						<ServiceEntry
 							key={node.id}
 							service={node}
 							onDelete={refetchUntilDeleted}
+							environmentID={environmentID}
 						/>
 					)
 				})}

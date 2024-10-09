@@ -1,16 +1,36 @@
 import { GetProjectQuery } from "@/__generated__/graphql"
-import { ServiceFragment } from "@/api/services"
+import { Service, ServiceFragment } from "@/api/services"
 import { gql, useQuery } from "@apollo/client"
 
+export type Project = GetProjectQuery["project"] & {
+	services: {
+		edges: Array<{
+			node: Service
+		}>
+	}
+}
+
 export const GetProjects = gql`
+	${ServiceFragment}
 	query GetProjects {
 		projects(first: 10) {
 			edges {
-				cursor
 				node {
 					id
 					name
 					createdAt
+					baseEnvironment {
+						id
+						name
+					}
+
+					services {
+						edges {
+							node {
+								...ServiceData
+							}
+						}
+					}
 				}
 			}
 		}
@@ -24,6 +44,20 @@ export const GetProject = gql`
 			id
 			name
 			description
+
+			baseEnvironment {
+				id
+				name
+			}
+
+			environments {
+				edges {
+					node {
+						id
+						name
+					}
+				}
+			}
 
 			services {
 				edges {

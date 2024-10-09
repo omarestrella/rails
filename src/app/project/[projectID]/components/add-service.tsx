@@ -1,125 +1,129 @@
 "use client"
 
-import { useCreateService } from "@/api/services"
+import { publicClient } from "@/api/client"
+import { useCreateService, useServices } from "@/api/services"
 import { Button } from "@/components/ui/button"
+
 import {
 	Dialog,
-	DialogContent,
+	DialogBody,
+	DialogDescription,
 	DialogTitle,
-	DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Field, Fieldset, Label } from "@/components/ui/fieldset"
 import { cn } from "@/lib/utils"
-import { DialogDescription } from "@radix-ui/react-dialog"
-import { useState } from "react"
+import { ApolloProvider } from "@apollo/client"
+import { useMemo, useState } from "react"
 
 type AddServiceButtonProps = {
 	projectID: string
-	onAdd: () => void
 }
 
-function ServiceURL({
-	serviceName,
-	source,
-}: {
-	serviceName?: string
-	source: string
-}) {
-	if (!serviceName) return null
-
-	const dockerSeparator = serviceName.includes("/") ? "r" : "_"
-
-	const url =
-		source === "github"
-			? `https://github.com/${serviceName}`
-			: `https://hub.docker.com/${dockerSeparator}/${serviceName}`
-
-	return <span className="text-muted-foreground text-xs">{url}</span>
+function normalizeName(name: string) {
+	return name.replace(/[\s\/\.]/g, "-")
 }
 
-function InternalButton({ projectID, onAdd }: AddServiceButtonProps) {
+function InternalButton({ projectID }: AddServiceButtonProps) {
+	const { services } = useServices(projectID)
 	const { createService, loading } = useCreateService()
 
 	const [showCreateDialog, setShowCreateDialog] = useState(false)
 
 	const [serviceName, setServiceName] = useState("")
+	const [serviceNameOverride, setServiceNameOverride] = useState("")
+	const [showConfig, setShowConfig] = useState(false)
 	const [source, setSource] = useState<"github" | "docker">("github")
+
+	const currentNameTaken = useMemo(
+		() => services.map((service) => service.name).includes(serviceNameOverride),
+		[services, serviceNameOverride],
+	)
 
 	const addService = async () => {
 		await createService({
 			variables: {
 				input: {
 					projectId: projectID,
+					name: serviceNameOverride || serviceName,
 					source:
 						source === "github"
 							? {
 									repo: serviceName,
-							  }
+								}
 							: {
 									image: serviceName,
-							  },
+								},
 				},
 			},
 		})
 
-		onAdd()
+		publicClient.refetchQueries({
+			include: ["GetProject"],
+		})
+
+		setShowCreateDialog(false)
+		setServiceName("")
+		setServiceNameOverride("")
+		setShowConfig(false)
 	}
 
 	return (
 		<>
+			<Button
+				onClick={() => {
+					setShowCreateDialog(true)
+				}}
+			>
+				Add service
+			</Button>
 			<Dialog
 				open={showCreateDialog}
-				onOpenChange={(open) => setShowCreateDialog(open)}
+				onClose={(open) => setShowCreateDialog(open)}
 			>
-				<DialogTrigger asChild>
-					<Button
-						onClick={() => {
-							setShowCreateDialog(true)
+				<DialogTitle className="font-bold">Add a service</DialogTitle>
+				<DialogDescription className="text-xs text-muted-foreground">
+					Add a new service from an existing GitHub repository, or choose from
+					one of our popular templates
+				</DialogDescription>
+
+				<DialogBody className="flex flex-col gap-4">
+					<div className="-ml-[11px]">
+						<Button
+							plain
+							type="button"
+							className={cn(
+								source === "github" ? "underline" : null,
+								"cursor-pointer data-[hover]:!bg-transparent",
+							)}
+							onClick={() => setSource("github")}
+						>
+							Github
+						</Button>
+						<Button
+							plain
+							type="button"
+							className={cn(
+								source === "docker" ? "underline" : null,
+								"cursor-pointer data-[hover]:!bg-transparent",
+							)}
+							onClick={() => setSource("docker")}
+						>
+							Docker
+						</Button>
+					</div>
+					<form
+						className="flex flex-col gap-2"
+						onSubmit={(e) => {
+							e.preventDefault()
+							addService()
 						}}
 					>
-						Add service
-					</Button>
-				</DialogTrigger>
-				<DialogContent>
-					<DialogTitle className="font-bold">Add a service</DialogTitle>
-					<DialogDescription className="text-xs text-muted-foreground">
-						Add a new service from an existing GitHub repository, or choose from
-						one of our popular templates
-					</DialogDescription>
-
-					<div className="flex flex-col gap-4">
-						<div>
-							<Button
-								variant="link"
-								size="sm"
-								type="button"
-								className={cn("pl-0", source === "github" ? "underline" : null)}
-								onClick={() => setSource("github")}
-							>
-								Github
-							</Button>
-							<Button
-								variant="link"
-								size="sm"
-								type="button"
-								className={cn(source === "docker" ? "underline" : null)}
-								onClick={() => setSource("docker")}
-							>
-								Docker
-							</Button>
-						</div>
-						<form
-							className="flex flex-col gap-2"
-							onSubmit={(e) => {
-								e.preventDefault()
-								addService()
-							}}
-						>
-							<div className="flex flex-col gap-1">
+						<Fieldset>
+							<Field className="flex flex-col gap-1">
 								<Label
 									htmlFor="serviceURL"
-									className="font-semibold whitespace-nowrap"
+									className="whitespace-nowrap font-semibold"
 								>
 									{source === "github" ? "GitHub repository" : "Docker image"}
 								</Label>
@@ -131,25 +135,61 @@ function InternalButton({ projectID, onAdd }: AddServiceButtonProps) {
 									name="serviceURL"
 									id="serviceURL"
 									onChange={(e) => {
-										setServiceName(e.target.value)
+										const normalized = normalizeName(e.target.value)
+										setServiceName(normalized)
+										setServiceNameOverride(normalized)
+										setShowConfig(true)
 									}}
 								/>
-								<ServiceURL serviceName={serviceName} source={source} />
-							</div>
+							</Field>
 
-							<div className="text-right">
-								<Button type="submit" disabled={!serviceName || loading}>
-									Add service
-								</Button>
-							</div>
-						</form>
-					</div>
-				</DialogContent>
+							{showConfig ? (
+								<div className="my-2 flex flex-col gap-2">
+									<p className="text-sm font-semibold">Configuration</p>
+									<div className="flex flex-col gap-1">
+										<Label className="flex flex-col gap-1 whitespace-nowrap">
+											<span className="text-xs font-medium">Name</span>
+											<Input
+												type="text"
+												value={serviceNameOverride}
+												className={cn(
+													"font-normal",
+													currentNameTaken ? "!ring-destructive" : "",
+												)}
+												onChange={(e) => {
+													const normalized = normalizeName(e.target.value)
+													setServiceNameOverride(normalized)
+													e.target.value = normalized
+												}}
+											/>
+										</Label>
+										<span className="text-xs text-destructive">
+											{currentNameTaken ? "Current name is taken" : "\u00A0"}
+										</span>
+									</div>
+								</div>
+							) : null}
+						</Fieldset>
+
+						<div className="text-right">
+							<Button
+								type="submit"
+								disabled={!serviceName || loading || currentNameTaken}
+							>
+								Add service
+							</Button>
+						</div>
+					</form>
+				</DialogBody>
 			</Dialog>
 		</>
 	)
 }
 
 export function AddServiceButton(props: AddServiceButtonProps) {
-	return <InternalButton {...props} />
+	return (
+		<ApolloProvider client={publicClient}>
+			<InternalButton {...props} />
+		</ApolloProvider>
+	)
 }

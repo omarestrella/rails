@@ -26,9 +26,9 @@ export function StatusDot({ status, animate, className }: StatusDotProps) {
 	}
 
 	return (
-		<span
+		<div
 			className={cn(
-				"inline-block w-3 h-3 rounded-full",
+				"h-3 w-3 rounded-full",
 				statusColors[status],
 				`shadow-[0_0_8px_3px] ${glowColors[status]}`,
 				animate ? "animate-pulse" : "",

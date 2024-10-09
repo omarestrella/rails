@@ -17,6 +17,9 @@ export const client = new ApolloClient({
 })
 
 export const publicClient = new ApolloClient({
-	uri: "http://localhost:3000/graphql",
+	uri:
+		typeof window !== "undefined"
+			? new URL("/graphql", window.location.origin).toString()
+			: "https://backboard.railway.app/graphql/v2",
 	cache: new InMemoryCache(),
 })
