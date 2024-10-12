@@ -1,7 +1,14 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { CardContent, CardFooter } from "@/components/ui/card"
+import {
+	Description,
+	Field,
+	FieldGroup,
+	Fieldset,
+	Label,
+	Legend,
+} from "@/components/ui/fieldset"
 import { Input } from "@/components/ui/input"
 import { useFormState } from "react-dom"
 
@@ -18,28 +25,38 @@ export function Form({
 	const [state, loginAction] = useFormState(action, initialState)
 
 	return (
-		<form action={loginAction}>
-			<CardContent>
-				<div className="space-y-4">
-					<div className="space-y-2">
-						<label
+		<form action={loginAction} className="min-w-96">
+			<Fieldset>
+				<Legend className="!text-2xl">Login</Legend>
+				<FieldGroup>
+					<Field>
+						<Label
 							htmlFor="password"
 							className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
 						>
 							Password
-						</label>
-						<Input id="password" type="password" name="password" required />
+						</Label>
+						<Input
+							id="password"
+							type="password"
+							name="password"
+							required
+							invalid={!!state.error}
+						/>
 						{state?.error ? (
-							<div className="text-destructive text-xs">{state.message}</div>
+							<Description className="!text-xs text-red-500">
+								{state.message}
+							</Description>
 						) : null}
-					</div>
-				</div>
-			</CardContent>
-			<CardFooter>
-				<Button type="submit" className="w-full">
-					Sign In
-				</Button>
-			</CardFooter>
+					</Field>
+				</FieldGroup>
+
+				<FieldGroup>
+					<Button type="submit" className="w-full">
+						Sign In
+					</Button>
+				</FieldGroup>
+			</Fieldset>
 		</form>
 	)
 }
