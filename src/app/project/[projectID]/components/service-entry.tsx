@@ -12,11 +12,6 @@ import { useDeploymentStatus } from "@/app/project/[projectID]/hooks/useDeployme
 import { Status, StatusDot } from "@/components/status-dot"
 
 import { Input } from "@/components/ui/input"
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from "@radix-ui/react-tooltip"
 import { getServiceTimeSinceDeploy } from "@/lib/time"
 import { LucideTerminal } from "lucide-react"
 import { useMemo, useState } from "react"
@@ -28,6 +23,34 @@ import {
 } from "@/components/ui/alert"
 import { Field, Fieldset, Label } from "@/components/ui/fieldset"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+
+function DeploymentBadge({ status }: { status: DeploymentStatus }) {
+	const color = useMemo(() => {
+		switch (status) {
+			case DeploymentStatus.NeedsApproval:
+			case DeploymentStatus.Queued:
+				return "yellow"
+			case DeploymentStatus.Initializing:
+			case DeploymentStatus.Building:
+			case DeploymentStatus.Deploying:
+				return "orange"
+			case DeploymentStatus.Crashed:
+			case DeploymentStatus.Failed:
+				return "red"
+			case DeploymentStatus.Success:
+				return "green"
+			default:
+				return undefined
+		}
+	}, [status])
+
+	return (
+		<Badge className="-mt-1 !text-xs" color={color}>
+			{status}
+		</Badge>
+	)
+}
 
 function DeleteServiceButton({
 	service,
@@ -51,7 +74,10 @@ function DeleteServiceButton({
 			</Button>
 			<Alert
 				open={showDeleteConfirmation}
-				onClose={(open) => setShowDeleteConfirmation(open)}
+				onClose={(open) => {
+					setShowDeleteConfirmation(open)
+					setConfirmation("")
+				}}
 			>
 				<AlertTitle>Delete service</AlertTitle>
 				<AlertBody className="flex flex-col gap-2 text-sm">
@@ -76,7 +102,14 @@ function DeleteServiceButton({
 					<Button onClick={() => setShowDeleteConfirmation(false)}>
 						Cancel
 					</Button>
-					<Button disabled={confirmation !== service.name} onClick={onDelete}>
+					<Button
+						disabled={confirmation !== service.name}
+						onClick={() => {
+							setShowDeleteConfirmation(false)
+							onDelete()
+						}}
+						color="red"
+					>
 						Delete
 					</Button>
 				</AlertActions>
@@ -156,15 +189,25 @@ export function ServiceEntry({
 				</div>
 
 				<div className="flex flex-col gap-2">
-					<span className="pb-0.5 font-medium leading-3">{service.name}</span>
-					<Tooltip delayDuration={200}>
-						<TooltipContent side="bottom">Last deployed</TooltipContent>
-						<TooltipTrigger asChild>
-							<span className="text-secondary-foregroundm w-fit text-xs">
+					<div className="flex gap-4">
+						<span className="pb-0.5 font-medium leading-3">{service.name}</span>
+						<DeploymentBadge status={status} />
+					</div>
+					<span
+						className="text-secondary-foregroundm w-fit text-xs"
+						title={
+							latestDeploymentDate
+								? new Date(latestDeploymentDate).toLocaleString()
+								: ""
+						}
+					>
+						{status === DeploymentStatus.Success ? (
+							<>
+								Deployed{" "}
 								{defaultTimeSinceDeploy ?? (timeSinceDeploy || "\u00A0")}
-							</span>
-						</TooltipTrigger>
-					</Tooltip>
+							</>
+						) : null}
+					</span>
 					<div className="mt-2">
 						<Button className="h-8 !text-xs" outline>
 							<LucideTerminal size={12} />

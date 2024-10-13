@@ -4,21 +4,33 @@ import { GetProjects } from "@/api/projects"
 import Link from "next/link"
 
 export default async function Page() {
-	const { data: projects } = await client.query<Partial<GetProjectsQuery>>({
+	const { data } = await client.query<Partial<GetProjectsQuery>>({
 		query: GetProjects,
 		fetchPolicy: "network-only",
 	})
 
-	const edges = projects.projects?.edges ?? []
+	const edges = data.projects?.edges ?? []
 
 	return (
-		<div className="flex flex-col gap-2">
-			{edges.map(({ node }) => (
-				<Link key={node.id} href={`/project/${node.id}`}>
-					<h1>{node.name}</h1>
-					<p>{node.createdAt}</p>
-				</Link>
-			))}
+		<div className="flex flex-wrap gap-2">
+			{edges.map(({ node: project }) => {
+				const serviceCount = (project.services.edges ?? []).length
+
+				return (
+					<Link
+						key={project.id}
+						href={`/project/${project.id}`}
+						className="flex w-72 flex-col gap-4 rounded-sm border p-2 hover:shadow-sm"
+					>
+						<h1 className="font-medium">{project.name}</h1>
+						{serviceCount ? (
+							<p className="text-sm">
+								{serviceCount} {serviceCount > 1 ? "services" : "service"}
+							</p>
+						) : null}
+					</Link>
+				)
+			})}
 		</div>
 	)
 }
