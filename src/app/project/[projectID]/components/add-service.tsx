@@ -210,7 +210,7 @@ function InternalButton({ projectID }: AddServiceButtonProps) {
 				}}
 			>
 				<DialogTitle className="font-bold">Add a service</DialogTitle>
-				<DialogDescription className="text-xs text-muted-foreground">
+				<DialogDescription className="text-muted-foreground text-xs">
 					Add a new service from an existing GitHub repository, or choose from
 					one of our popular templates
 				</DialogDescription>
@@ -272,7 +272,7 @@ function InternalButton({ projectID }: AddServiceButtonProps) {
 											const normalized = normalizeName(e.target.value)
 
 											const payload: ActionPayload<SetFormDataAction> = {
-												serviceName: normalized,
+												serviceName: e.target.value,
 												showConfig: true,
 											}
 
