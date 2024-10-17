@@ -24,6 +24,9 @@ import {
 import { Field, Fieldset, Label } from "@/components/ui/fieldset"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Slideout } from "@/components/slideout"
+import { Logs } from "@/app/project/[projectID]/components/logs"
 
 function DeploymentBadge({ status }: { status: DeploymentStatus }) {
 	const color = useMemo(() => {
@@ -127,15 +130,21 @@ export function ServiceEntry({
 	environmentID: string | undefined
 	onDelete: (serviceID: string) => void
 }) {
-	const deleteService = useDeleteService(service.id)
-	const deployService = useDeployService(service.id, environmentID)
+	const router = useRouter()
 
 	const [deploying, setDeploying] = useState(false)
 
-	const { status, timeSinceDeploy } = useDeploymentStatus(
+	const searchParams = useSearchParams()
+
+	const deleteService = useDeleteService(service.id)
+	const deployService = useDeployService(service.id, environmentID)
+
+	const { deploymentID, status, timeSinceDeploy } = useDeploymentStatus(
 		service.id,
 		environmentID,
 	)
+
+	const showLogs = searchParams.get("logs") === service.id
 
 	const latestDeploymentDate = getLatestDeployment(
 		service,
@@ -209,7 +218,11 @@ export function ServiceEntry({
 						) : null}
 					</span>
 					<div className="mt-2">
-						<Button className="h-8 !text-xs" outline>
+						<Button
+							className="h-8 !text-xs"
+							outline
+							href={`?logs=${service.id}`}
+						>
 							<LucideTerminal size={12} />
 							<span>Show logs</span>
 						</Button>
@@ -229,6 +242,17 @@ export function ServiceEntry({
 					}}
 				/>
 			</div>
+
+			{showLogs ? (
+				<Slideout
+					title={`${service.name} logs`}
+					onClose={() => {
+						router.back()
+					}}
+				>
+					<Logs serviceID={service.id} deploymentID={deploymentID} />
+				</Slideout>
+			) : null}
 		</div>
 	)
 }

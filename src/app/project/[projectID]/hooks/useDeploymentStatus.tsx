@@ -12,7 +12,11 @@ import { useEffect, useState } from "react"
 export function useDeploymentStatus(
 	serviceID: string,
 	environmentID: string | undefined,
-): { status: DeploymentStatus; timeSinceDeploy: string } {
+): {
+	status: DeploymentStatus
+	timeSinceDeploy: string
+	deploymentID: string | null
+} {
 	const { data, refetch } = useQuery<GetServiceQuery>(GetService, {
 		variables: {
 			serviceID,
@@ -64,10 +68,15 @@ export function useDeploymentStatus(
 	}, [deployment])
 
 	if (!deployment) {
-		return { status: DeploymentStatus.Initializing, timeSinceDeploy: "" }
+		return {
+			deploymentID: null,
+			status: DeploymentStatus.Initializing,
+			timeSinceDeploy: "",
+		}
 	}
 
 	return {
+		deploymentID: deployment.id,
 		status: deployment.status,
 		timeSinceDeploy: timeSinceDeploy,
 	}

@@ -3,7 +3,6 @@ import type { Metadata } from "next"
 import "./globals.css"
 import { client, gql } from "@/api/client"
 import { cookies } from "next/headers"
-import { TooltipProvider } from "@radix-ui/react-tooltip"
 import Link from "next/link"
 
 import { Inter } from "next/font/google"
@@ -40,25 +39,23 @@ export default async function RootLayout({
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<body className={`antialiased ${inter.className}`}>
-				<TooltipProvider>
-					{hasSession ? (
-						<div className="h-12 w-screen border-b">
-							<div className="mx-auto flex h-full w-3/5 items-center justify-between">
-								<div className="text-lg font-bold">
-									<Link href="/">Deployer</Link>
-								</div>
-								<div>
-									<img
-										src={data.me.avatar}
-										className="h-8 w-8 rounded-full"
-										alt="user"
-									/>
-								</div>
+				{hasSession ? (
+					<div className="h-12 w-screen border-b">
+						<div className="mx-auto flex h-full w-3/5 items-center justify-between">
+							<div className="text-lg font-bold">
+								<Link href="/">Deployer</Link>
+							</div>
+							<div>
+								<img
+									src={data.me.avatar}
+									className="h-8 w-8 rounded-full"
+									alt="user"
+								/>
 							</div>
 						</div>
-					) : null}
-					<div className="mx-auto w-3/5 py-4">{children}</div>
-				</TooltipProvider>
+					</div>
+				) : null}
+				<div className="mx-auto w-3/5 py-4">{children}</div>
 			</body>
 		</html>
 	)
